@@ -1,16 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
+from app.core.database import get_db
+from app.models.habit import Habit
 from app.schemas.ai import (
-    NoteAnalysisRequest
+    NoteAnalysisRequest,
+    NoteAnalysisResponse,
+    HabitRecommendationResponse,
 )
-
-from app.schemas.ai import (
-    NoteAnalysisResponse
-)
-
-from app.services.ai_service import (
-    AIService
-)
+from app.services.ai_service import AIService
 
 
 router = APIRouter(
@@ -29,5 +27,15 @@ def analyze_note(
     result = AIService.analyze_note(
         request.note
     )
-
     return result
+
+
+@router.get(
+    "/recommendations",
+    response_model=HabitRecommendationResponse
+)
+def get_recommendations(
+    db: Session = Depends(get_db)
+):
+    habits = db.query(Habit).all()
+    return AIService.get_recommendations(habits)

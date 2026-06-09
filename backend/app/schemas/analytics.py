@@ -1,3 +1,5 @@
+from typing import Dict
+
 from pydantic import BaseModel
 
 
@@ -11,3 +13,5 @@ class AnalyticsResponse(BaseModel):
     success_rate: float
 
     best_day: str
+
+    category_distribution: Dict[str, int] = {}

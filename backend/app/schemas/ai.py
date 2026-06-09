@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -12,7 +14,9 @@ class NoteAnalysisRequest(BaseModel):
 
 class NoteAnalysisResponse(BaseModel):
     mood: str
-
     score: float
-
     recommendation: str
+
+
+class HabitRecommendationResponse(BaseModel):
+    recommendations: List[str]
