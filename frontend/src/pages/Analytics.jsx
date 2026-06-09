@@ -5,7 +5,10 @@ import {
   CalendarDays,
   AlertCircle,
   RefreshCw,
+  Download,
 } from 'lucide-react';
+import autoTable from 'jspdf-autotable';
+import jsPDF from 'jspdf';
 import useAnalytics from '../hooks/useAnalytics';
 import Loader from '../components/common/Loader';
 import Card, { CardHeader, CardTitle, CardBody } from '../components/common/Card';
@@ -38,6 +41,83 @@ const StatCard = ({ icon: Icon, label, value, color = 'indigo' }) => {
 const Analytics = () => {
   const { analytics, loading, error, refresh } = useAnalytics();
 
+  const exportPDF = () => {
+    if (!analytics) return;
+
+    try {
+      const doc = new jsPDF();
+
+      // Report Header
+      doc.setFontSize(20);
+      doc.setTextColor(30, 58, 138); // indigo-900
+      doc.text('Habit Hero - Progress Report', 14, 22);
+
+      doc.setFontSize(11);
+      doc.setTextColor(100, 116, 139); // slate-500
+      const dateStr = new Date().toLocaleDateString();
+      doc.text(`Generated on: ${dateStr}`, 14, 30);
+
+      // Section: Summary Stats
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42); // slate-900
+      doc.text('Summary Overview', 14, 45);
+
+      const statsData = [
+        ['Total Habits', analytics.total_habits],
+        ['Total Check-ins', analytics.total_checkins],
+        ['Current Streak', `${analytics.current_streak ?? 0} Days`],
+        ['Success Rate', `${Number(analytics.success_rate ?? 0).toFixed(1)}%`],
+        ['Best Day', analytics.best_day || 'N/A'],
+      ];
+
+      autoTable(doc, {
+        startY: 50,
+        head: [['Metric', 'Value']],
+        body: statsData,
+        theme: 'striped',
+        headStyles: { fillColor: [79, 70, 229] }, // indigo-600
+        styles: { fontSize: 11 },
+      });
+
+      // Section: Category Distribution
+      const finalY = doc.lastAutoTable.finalY || 50;
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Category Distribution', 14, finalY + 15);
+
+      const categoryData = Object.entries(analytics.category_distribution || {}).map(([cat, count]) => [
+        cat,
+        count,
+      ]);
+
+      if (categoryData.length > 0) {
+        autoTable(doc, {
+          startY: finalY + 20,
+          head: [['Category', 'Active Habits']],
+          body: categoryData,
+          theme: 'grid',
+          headStyles: { fillColor: [79, 70, 229] },
+          styles: { fontSize: 11 },
+        });
+      } else {
+        doc.setFontSize(11);
+        doc.setTextColor(100, 116, 139);
+        doc.text('No category data available.', 14, finalY + 22);
+      }
+
+      // Footer
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setFontSize(9);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Habit Hero Analytics Report', 14, pageHeight - 10);
+
+      doc.save('habit-hero-report.pdf');
+    } catch (err) {
+      console.error('Failed to export PDF report', err);
+      alert('Failed to generate PDF report. Please try again.');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -48,10 +128,16 @@ const Analytics = () => {
             Overview of your habit performance
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={refresh} disabled={loading}>
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={refresh} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+          <Button variant="primary" size="sm" onClick={exportPDF} disabled={loading || !analytics}>
+            <Download size={14} />
+            <span className="hidden sm:inline">Export PDF</span>
+          </Button>
+        </div>
       </div>
 
       {/* Error */}
@@ -65,7 +151,7 @@ const Analytics = () => {
       {loading ? (
         <Loader message="Loading analytics…" />
       ) : analytics ? (
-        <>
+        <div id="analytics-content" className="flex flex-col gap-6 p-1 bg-gray-50/50 rounded-xl">
           {/* ── Top 4 stat cards ──────────────────────────────────────── */}
           {/* Success Rate removed — shown once only in the gauge below   */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -129,7 +215,7 @@ const Analytics = () => {
               </CardBody>
             </Card>
           </div>
-        </>
+        </div>
       ) : (
         !error && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
