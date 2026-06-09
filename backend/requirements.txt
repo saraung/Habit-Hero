@@ -12,3 +12,4 @@ vaderSentiment
 
 pytest
 httpx
+scikit-learn
