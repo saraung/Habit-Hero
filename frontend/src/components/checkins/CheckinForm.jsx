@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, Brain, Loader2 } from 'lucide-react';
 import Button from '../common/Button';
 import NoteAnalysisResult from './NoteAnalysisResult';
 import { analyzeNote } from '../../api/aiApi';
@@ -22,6 +22,11 @@ const CheckinForm = ({ habitId, onSubmit, loading = false }) => {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  // Debounce timer ref for live analysis hint
+  const debounceRef = useRef(null);
+  const [noteHint, setNoteHint] = useState(false);
 
   const validate = () => {
     const errs = {};
@@ -33,45 +38,74 @@ const CheckinForm = ({ habitId, onSubmit, loading = false }) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-    // clear previous analysis when note changes
+
     if (name === 'note') {
       setAnalysisResult(null);
       setAnalysisError('');
+      setSubmitted(false);
+
+      // Show the AI hint badge after user types 20+ chars
+      clearTimeout(debounceRef.current);
+      if (value.trim().length >= 20) {
+        debounceRef.current = setTimeout(() => setNoteHint(true), 600);
+      } else {
+        setNoteHint(false);
+      }
     }
   };
 
-  const handleAnalyze = async () => {
-    const trimmed = form.note.trim();
-    if (!trimmed) {
-      setAnalysisError('Please write a note before analyzing.');
-      return;
-    }
-    if (trimmed.length > 1000) {
-      setAnalysisError('Note must be under 1000 characters.');
-      return;
-    }
+  // Run analysis silently in background after successful submit
+  const runAnalysis = async (note) => {
+    const trimmed = note.trim();
+    if (!trimmed || trimmed.length < 5) return;
+
     setAnalyzing(true);
     setAnalysisError('');
     setAnalysisResult(null);
+
     try {
       const result = await analyzeNote(trimmed);
       setAnalysisResult(result);
     } catch (err) {
-      setAnalysisError(err.message || 'Failed to analyze note. Please try again.');
+      setAnalysisError(err.message || 'Mood analysis failed.');
     } finally {
       setAnalyzing(false);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
     }
-    onSubmit(form);
+
+    const noteForAnalysis = form.note;
+    setNoteHint(false);
+
+    try {
+      // Submit check-in first — if it throws, don't analyze
+      await onSubmit(form);
+
+      // Mark as submitted so the analysis panel shows
+      setSubmitted(true);
+
+      // Reset form fields (analysis panel stays visible)
+      setForm({ habit_id: habitId, checkin_date: getTodayString(), note: '' });
+
+      // Auto-analyze if there's a meaningful note
+      if (noteForAnalysis.trim().length >= 5) {
+        runAnalysis(noteForAnalysis);
+      }
+    } catch {
+      // onSubmit handles its own error display; don't run analysis
+      setSubmitted(false);
+    }
   };
+
+  // Cleanup debounce on unmount
+  useEffect(() => () => clearTimeout(debounceRef.current), []);
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -93,22 +127,24 @@ const CheckinForm = ({ habitId, onSubmit, loading = false }) => {
         )}
       </div>
 
-      {/* Note + Analyze button */}
+      {/* Note field */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label htmlFor="checkin-note" className="text-sm font-medium text-slate-700">
             Note{' '}
             <span className="text-slate-400 font-normal">(optional)</span>
           </label>
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={analyzing || !form.note.trim()}
-            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            <Sparkles size={12} />
-            {analyzing ? 'Analyzing…' : 'Analyze mood'}
-          </button>
+
+          {/* AI hint badge — appears once enough text is typed */}
+          {noteHint && !submitted && (
+            <span
+              className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full
+                bg-indigo-50 text-indigo-600 border border-indigo-200 animate-pulse"
+            >
+              <Sparkles size={10} />
+              AI will analyze on submit
+            </span>
+          )}
         </div>
 
         <textarea
@@ -117,7 +153,7 @@ const CheckinForm = ({ habitId, onSubmit, loading = false }) => {
           rows={3}
           value={form.note}
           onChange={handleChange}
-          placeholder="How did it go? Any thoughts…"
+          placeholder="How did it go? Any thoughts… (AI will read your mood 🧠)"
           maxLength={1000}
           className={`${inputClass} resize-none`}
         />
@@ -135,8 +171,30 @@ const CheckinForm = ({ habitId, onSubmit, loading = false }) => {
         )}
       </div>
 
-      {/* AI Result card — shown after analysis */}
-      {analysisResult && <NoteAnalysisResult result={analysisResult} />}
+      {/* ── Mood Analysis Panel ── shown after submit if there was a note */}
+      {submitted && (analyzing || analysisResult) && (
+        <div className="mood-analysis-panel">
+          {analyzing ? (
+            /* Shimmer skeleton while AI processes */
+            <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50 to-violet-50 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Loader2 size={14} className="text-indigo-500 animate-spin" />
+                <span className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">
+                  Analyzing your mood…
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="h-3 rounded-full bg-indigo-100 animate-pulse w-3/4" />
+                <div className="h-3 rounded-full bg-indigo-100 animate-pulse w-1/2" />
+                <div className="h-2 rounded-full bg-indigo-100 animate-pulse w-full mt-1" />
+                <div className="h-3 rounded-full bg-indigo-100 animate-pulse w-5/6" />
+              </div>
+            </div>
+          ) : (
+            <NoteAnalysisResult result={analysisResult} />
+          )}
+        </div>
+      )}
 
       <Button type="submit" variant="primary" loading={loading}>
         {loading ? 'Saving…' : 'Add Check-in'}

@@ -18,7 +18,8 @@ const CheckinHistory = ({ checkins = [] }) => {
       {sorted.map((checkin) => (
         <li
           key={checkin.id}
-          className="flex gap-3 items-start p-3 rounded-lg bg-slate-50 border border-slate-100"
+          className="flex gap-3 items-start p-3 rounded-lg bg-slate-50 border border-slate-100
+            hover:border-slate-200 hover:bg-white transition-colors duration-150"
         >
           <div className="mt-0.5 shrink-0">
             <CheckCircle2 size={16} className="text-green-500" />
@@ -33,9 +34,14 @@ const CheckinHistory = ({ checkins = [] }) => {
               </span>
             </div>
             {checkin.note && (
-              <div className="flex items-start gap-1.5 mt-1.5">
-                <MessageSquare size={12} className="text-slate-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-slate-500 leading-relaxed">
+              <div className="mt-2 rounded-lg bg-indigo-50/60 border border-indigo-100 px-2.5 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MessageSquare size={11} className="text-indigo-400 shrink-0" />
+                  <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wide">
+                    Note
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
                   {checkin.note}
                 </p>
               </div>

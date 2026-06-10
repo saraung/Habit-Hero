@@ -48,7 +48,8 @@ const Sidebar = () => {
 
       {/* Footer */}
       <div className="mt-auto px-3 pt-6 border-t border-slate-100">
-        <p className="text-xs text-slate-400">© 2024 Habit Hero</p>
+        <p className="text-xs text-slate-400">© 2026 Habit Hero</p>
+         <p className="text-xs text-slate-400">www.saraung.com</p>
       </div>
     </aside>
   );
