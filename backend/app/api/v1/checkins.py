@@ -21,7 +21,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/",
+    "",
     response_model=CheckInResponse,
     status_code=201
 )
