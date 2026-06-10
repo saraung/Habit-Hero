@@ -5,6 +5,10 @@ A full-stack habit tracking application with AI-powered mood analysis and person
 🌐 **Frontend:** https://habithero.saraung.com
 ⚙️ **API:** https://habitapi.saraung.com
 
+## 🎥 Demo Video
+
+[Watch Demo Video](https://drive.google.com/file/d/1SAOHs6b7aMoj_rjunw_X1JlQxAWbjbUR/view?usp=sharing)
+
 ---
 
 ## ✨ Features
