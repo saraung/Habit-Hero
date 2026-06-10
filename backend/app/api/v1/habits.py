@@ -20,7 +20,7 @@ router = APIRouter(
 
 
 @router.get(
-    "/",
+    "",
     response_model=list[HabitResponse]
 )
 def get_habits(
@@ -52,7 +52,7 @@ def get_habit(
 
 
 @router.post(
-    "/",
+    "",
     response_model=HabitResponse,
     status_code=201
 )
